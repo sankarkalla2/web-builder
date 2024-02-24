@@ -1,7 +1,7 @@
 // prisma/schema.prisma
 datasource db {
   provider  = "postgresql"
-  url  	    = env("DATABASE_URL")
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -10,36 +10,99 @@ generator client {
 }
 
 enum UserRole {
-  ADMIN
-  USER
+  AGENCY_ADMIN
+  AGENCY_OWNER
+  SUBACCOUNT_USER
+  SUBACCOUNT_GUEST
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          UserRole @default(USER)
-  accounts      Account[]
-  isTwoFactorEnabled Boolean @default(false)
+  id                    String                 @id @default(cuid())
+  name                  String?
+  email                 String?                @unique
+  emailVerified         DateTime?
+  image                 String?
+  password              String?
+  role                  UserRole               @default(SUBACCOUNT_USER)
+  accounts              Account[]
+  isTwoFactorEnabled    Boolean                @default(false)
   twoFactorConfirmation TwoFactorConfirmation?
+  Agency                Agency?                @relation(fields: [agencyId], references: [id])
+  agencyId              String?
+  Permissions           Permissions[]
+}
+
+model Agency {
+  id                 String       @id @unique @default(cuid())
+  connectedAccountId String?      @default("")
+  customerid         String       @default("")
+  nmae               String
+  agencyLogo         String       @db.Text
+  companyEmail       String       @db.Text
+  companyPhone       String
+  whiteLabel         Boolean      @default(true)
+  adress             String       @db.Text
+  city               String
+  zipcode            String
+  state              String
+  country            String
+  goal               Int          @default(5)
+  users              User[]
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  SubAccount         SubAccount[]
+}
+
+model SubAccount {
+  id                 String        @id @default(cuid())
+  connectedAccountId String?       @default("")
+  name               String?
+  subAccountLogo     String        @db.Text
+  companyEmail       String
+  companyPhone       String
+  goal               Int           @default(5)
+  adress             String
+  city               String
+  zipCode            String
+  state              String
+  country            String
+  agencyId           String
+  Agency             Agency        @relation(fields: [agencyId], references: [id])
+  Permissions        Permissions[]
+  Tag                Tag[]
+}
+
+model Permissions {
+  id           String     @id @unique @default(cuid())
+  email        String
+  User         User       @relation(fields: [email], references: [email], onDelete: Cascade)
+  subAccountId String
+  SubAccount   SubAccount @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+  access       Boolean
+}
+
+model Tag {
+  id           String     @id @default(cuid())
+  name         String
+  color        String
+  createdAt    DateTime   @default(now())
+  subAccountId String
+  SubAccount   SubAccount @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -47,27 +110,27 @@ model Account {
 }
 
 model VerificationToken {
-  id String @id @default(cuid())
-  email String
-  token String @unique
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
   expires DateTime
 
   @@unique([email, token])
 }
 
 model PasswordResetToken {
-  id String @id @default(cuid())
-  email String
-  token String @unique
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
   expires DateTime
 
   @@unique([email, token])
 }
 
 model TwoFactorToken {
-  id String @id @default(cuid())
-  email String
-  token String @unique
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
   expires DateTime
 
   @@unique([email, token])
@@ -77,7 +140,7 @@ model TwoFactorConfirmation {
   id String @id @default(cuid())
 
   userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId])
 }
